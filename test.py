@@ -15,9 +15,12 @@ def load_test_set(path):
 
 
 def test():
+    size_scale = 1e5
+    time_scale = 5e5
 
-    size_scale = 50e6
-    time_scale = 50e6
+    # size_scale = 50e6
+    # time_scale = 50e6
+
     mem_scale = 100
 
     my_model = PerformanceMeasurementModel(1, 2, size_scale)

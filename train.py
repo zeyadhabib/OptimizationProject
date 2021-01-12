@@ -24,8 +24,8 @@ class PerformanceMeasurementModel(torch.nn.Module, ABC):
 
 def train():
 
-    size_scale = 50e6
-    time_scale = 50e6
+    size_scale = 1e5
+    time_scale = 5e5
     mem_scale = 100
     validation_split = 0.1
 
