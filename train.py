@@ -23,9 +23,10 @@ class PerformanceMeasurementModel(torch.nn.Module, ABC):
 
 
 def train():
-
-    size_scale = 1e5
-    time_scale = 5e5
+    # size_scale = 1e5
+    # time_scale = 5e5
+    size_scale = 50e6
+    time_scale = 50e6
     mem_scale = 100
     validation_split = 0.1
 
@@ -54,10 +55,9 @@ def train():
     prev_loss = 1e11
 
     for epoch in range(30):
-        total_loss, total_loss_valid = (0, 0)
+        total_loss, total_loss_valid, total_loss_metric = (0, 0, 0)
         num, num_valid = (0, 0)
         for i, ((size, target), (size_valid, target_valid)) in enumerate(zip(train_loader, valid_loader)):
-
             pred_y = our_model(size)
             target[:, 0], target[:, 1] = target[:, 0] / time_scale, target[:, 1] * mem_scale
 
@@ -72,20 +72,30 @@ def train():
 
             with torch.no_grad():
                 pred_y_valid = our_model(size_valid)
-                target_valid[:, 0], target_valid[:, 1] = target_valid[:, 0] / time_scale, target_valid[:, 1] * mem_scale
 
+                pred_y_metric = copy.deepcopy(pred_y_valid)
+                target_valid_metric = copy.deepcopy(target_valid)
+
+                target_valid[:, 0], target_valid[:, 1] = target_valid[:, 0] / time_scale, target_valid[:, 1] * mem_scale
                 loss_valid = criterion(pred_y_valid, target_valid)
                 total_loss_valid += loss_valid * target_valid.shape[0]
                 num_valid += target_valid.shape[0]
 
-        print('epoch {}, loss {}, validation loss {}'.format(epoch, total_loss/num, total_loss_valid/num_valid))
-        avg_losses.append(total_loss/num)
-        avg_losses_valid.append(total_loss_valid/num_valid)
+                pred_y_metric[:, 0], pred_y_metric[:, 1] = pred_y_metric[:, 0] * (time_scale / 1e6), \
+                                                           pred_y_metric[:, 1] / mem_scale
+                loss_metric = torch.nn.L1Loss()(pred_y_metric, target_valid_metric)
+                total_loss_metric += loss_metric * target_valid.shape[0]
 
-        if total_loss/num < prev_loss:
+        print('epoch {}, loss {}, validation loss {}, metric {}'.format(epoch, total_loss / num,
+                                                                        total_loss_valid / num_valid,
+                                                                        loss_metric / num_valid))
+        avg_losses.append(total_loss / num)
+        avg_losses_valid.append(total_loss_valid / num_valid)
+
+        if total_loss / num < prev_loss:
             print("********************SAVING*******************")
             state_dict = copy.deepcopy(our_model.state_dict())
-            prev_loss = total_loss/num
+            prev_loss = total_loss / num
 
     avg_losses = np.array(avg_losses)
     avg_losses_valid = np.array(avg_losses_valid)

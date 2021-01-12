@@ -28,7 +28,7 @@ def test():
     X, Y = load_test_set("dataset.txt")
     pred = my_model(torch.FloatTensor(X[10:20]))
     pred[:, 0], pred[:, 1] = pred[:, 0] * time_scale, pred[:, 1] / mem_scale
-    print(torch.cat((pred, torch.FloatTensor(Y[10:20])), dim=1))
+    print(torch.cat((torch.FloatTensor(X[10:20]), pred, torch.FloatTensor(Y[10:20])), dim=1))
 
 
 if __name__ == '__main__':
