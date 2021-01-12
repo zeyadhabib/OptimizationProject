@@ -3,6 +3,8 @@ from scipy.optimize import minimize
 import math
 import torch
 from train import PerformanceMeasurementModel
+from scipy.optimize import minimize_scalar
+
 
 size = 10000
 block = 10
@@ -40,6 +42,8 @@ def weighting(x): #weighting method
 
 def main():
     minimumBlock = minimize(weighting , block , method='SLSQP')
+    min = minimize_scalar(weighting, bounds=(1, size), method='bounded')
+    print(min)
 
 
 if __name__ == "__main__":
