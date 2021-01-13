@@ -23,20 +23,13 @@ def get_NN_grad(model: nn.Module, block_size: float):
     opt = torch.optim.Adam(params=model.parameters())
 
     pred = model(nn_input)
-    dummy_memory = torch.zeros_like(pred)
-    dummy_memory[:, 0] = pred[:, 0]
-    pred2 = torch.nn.MSELoss()(pred, dummy_memory)
-    pred2.backward()
+    pred[:, 1].backward()
     memory_grad = copy.deepcopy(nn_input.grad)
 
     nn_input.grad.zero_()
     opt.zero_grad()
-
     pred = model(nn_input)
-    dummy_time = torch.zeros_like(pred)
-    dummy_time[:, 1] = pred[:, 1]
-    pred1 = torch.nn.MSELoss()(pred, dummy_time)
-    pred1.backward()
+    pred[:, 0].backward()
     time_grad = copy.deepcopy(nn_input.grad)
 
     return time_grad.detach().numpy()[0, 0], memory_grad.detach().numpy()[0, 0]
@@ -51,9 +44,17 @@ def test():
     my_model = PerformanceMeasurementModel(1, 2, size_scale)
     my_model.load_state_dict(torch.load("performanceModel_new.pth"))
     X, Y = load_test_set("dataset.txt")
-    pred = my_model(torch.FloatTensor(X[20:30]))
-    pred[:, 0], pred[:, 1] = pred[:, 0] * time_scale, pred[:, 1] / mem_scale
-    print(torch.cat((torch.FloatTensor(X[20:30]), pred, torch.FloatTensor(Y[20:30])), dim=1))
+    x = torch.FloatTensor(X[20:21])
+    x.requires_grad = True
+    pred = my_model(x)
+    pred[:, 0].backward()
+    pred = my_model(x)
+    pred[:, 1].backward()
+    total = copy.deepcopy(x.grad)
+    time, mem = get_NN_grad(my_model, X[20])
+    print(total.detach().numpy()[0, 0] == time+mem)
+    # pred[:, 0], pred[:, 1] = pred[:, 0] * time_scale, pred[:, 1] / mem_scale
+    # print(torch.cat((torch.FloatTensor(X[20:30]), pred, torch.FloatTensor(Y[20:30])), dim=1))
 
 
 if __name__ == '__main__':

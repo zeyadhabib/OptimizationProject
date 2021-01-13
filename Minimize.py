@@ -4,7 +4,7 @@ import math
 import torch
 from train import PerformanceMeasurementModel
 from scipy.optimize import minimize_scalar
-from scipy.optimize import fsolve
+from scipy.optimize import root_scalar
 import copy
 
 size = 0
@@ -16,22 +16,19 @@ def get_NN_grad(block_size: int):
     mem_scale = 24
     model = PerformanceMeasurementModel(1, 2, size_scale)
     model.load_state_dict(torch.load("performanceModel_new.pth"))
+
     nn_input = torch.FloatTensor(np.array([block_size]).reshape((-1, 1)))
     nn_input.requires_grad = True
     opt = torch.optim.Adam(params=model.parameters())
+
     pred = model(nn_input)
-    dummy_memory = torch.zeros_like(pred)
-    dummy_memory[:, 0] = pred[:, 0]
-    pred2 = torch.nn.MSELoss()(pred, dummy_memory)
-    pred2.backward()
+    pred[:, 1].backward()
     memory_grad = copy.deepcopy(nn_input.grad)
+
     nn_input.grad.zero_()
     opt.zero_grad()
     pred = model(nn_input)
-    dummy_time = torch.zeros_like(pred)
-    dummy_time[:, 1] = pred[:, 1]
-    pred1 = torch.nn.MSELoss()(pred, dummy_time)
-    pred1.backward()
+    pred[:, 0].backward()
     time_grad = copy.deepcopy(nn_input.grad)
 
     return time_grad.detach().numpy()[0, 0] * time_scale, memory_grad.detach().numpy()[0, 0] / mem_scale
@@ -78,12 +75,13 @@ def weighting(x):  # weighting method
 def main():
     arr = [100, 200, 500, 1000, 10000, 60000, 100000, 500000, 1000000, 10000000, 1000000000]
     minimum = []
+    global size
     for arr_size in arr:
-        global size
         size = arr_size
         minimum.append(minimize_scalar(weighting, bounds=(1, arr_size), method='bounded').x)
     print(minimum)
-    solution = fsolve(f_dash, minimum[4])
+    size = arr[5]
+    solution = root_scalar(f_dash, method='secant', x0=minimum[5]+1000, x1=minimum[5]-10000)
     print(solution)
     plt.plot(arr, minimum)
     plt.show()
