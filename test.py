@@ -1,6 +1,8 @@
 import torch
+from torch import nn
 from train import PerformanceMeasurementModel
 import numpy as np
+import copy
 
 
 def load_test_set(path):
@@ -14,14 +16,33 @@ def load_test_set(path):
     return np.array(X).reshape(-1, 1), np.array(Y)
 
 
+def get_NN_grad(model: nn.Module, block_size: int):
+
+    nn_input = torch.cuda.FloatTensor(np.array([block_size]).reshape((-1, 1)))
+    nn_input.requires_grad = True
+    opt = torch.optim.Adam(params=model.parameters())
+
+    pred = model(nn_input)
+    dummy_memory = torch.zeros_like(pred)
+    dummy_memory[:, 0] = pred[:, 0]
+    pred2 = torch.nn.MSELoss()(pred, dummy_memory)
+    pred2.backward()
+    memory_grad = copy.deepcopy(nn_input.grad)
+
+    nn_input.grad.zero_()
+    opt.zero_grad()
+
+    pred = model(nn_input)
+    dummy_time = torch.zeros_like(pred)
+    dummy_time[:, 1] = pred[:, 1]
+    pred1 = torch.nn.MSELoss()(pred, dummy_time)
+    pred1.backward()
+    time_grad = copy.deepcopy(nn_input.grad)
+
+    return time_grad, memory_grad
+
+
 def test():
-    # size_scale = 1e5
-    # time_scale = 5e5
-
-    # size_scale = 50e6
-    # time_scale = 50e6
-
-    # mem_scale = 100
 
     size_scale = 1e6
     time_scale = 3e6
@@ -30,7 +51,35 @@ def test():
     my_model = PerformanceMeasurementModel(1, 2, size_scale)
     my_model.load_state_dict(torch.load("performanceModel_new.pth"))
     X, Y = load_test_set("dataset.txt")
-    pred = my_model(torch.FloatTensor(X[20:30]))
+    X = torch.FloatTensor(X[20:21])
+    opt = torch.optim.Adam(params=my_model.parameters())
+    X.requires_grad = True
+
+    pred = my_model(X)
+    opt.zero_grad()
+    dummy_time = torch.zeros_like(pred)
+    dummy_time[:, 0] = pred[:, 0]
+    pred2 = torch.nn.MSELoss()(pred, dummy_time)
+    pred2.backward()
+    half_grad1 = copy.deepcopy(X.grad)
+    print(X.grad)
+
+    X.grad.zero_()
+    pred = my_model(X)
+    opt.zero_grad()
+    dummy_memory = torch.zeros_like(pred)
+    dummy_memory[:, 1] = pred[:, 1]
+    pred1 = torch.nn.MSELoss()(pred, dummy_memory)
+    pred1.backward()
+    half_grad2 = copy.deepcopy(X.grad)
+    print(X.grad)
+
+    X.grad.zero_()
+    pred = my_model(X)
+    opt.zero_grad()
+    pred3 = torch.nn.MSELoss()(pred, torch.zeros_like(pred))
+    pred3.backward()
+
     pred[:, 0], pred[:, 1] = pred[:, 0] * time_scale, pred[:, 1] / mem_scale
     print(torch.cat((torch.FloatTensor(X[20:30]), pred, torch.FloatTensor(Y[20:30])), dim=1))
 
