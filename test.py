@@ -16,7 +16,7 @@ def load_test_set(path):
     return np.array(X).reshape(-1, 1), np.array(Y)
 
 
-def get_NN_grad(model: nn.Module, block_size: int):
+def get_NN_grad(model: nn.Module, block_size: float):
 
     nn_input = torch.FloatTensor(np.array([block_size]).reshape((-1, 1)))
     nn_input.requires_grad = True
@@ -51,26 +51,9 @@ def test():
     my_model = PerformanceMeasurementModel(1, 2, size_scale)
     my_model.load_state_dict(torch.load("performanceModel_new.pth"))
     X, Y = load_test_set("dataset.txt")
-    # X = torch.FloatTensor(X[20:21])
-    opt = torch.optim.Adam(params=my_model.parameters())
-    # X.requires_grad = True
-
-    print(X.shape)
-
-    time_grad, memory_grad = get_NN_grad(my_model, X[20, 0])
-
-    X = torch.FloatTensor(X[20:21])
-    X.requires_grad = True
-    # X.grad.zero_()
-    pred = my_model(X)
-    opt.zero_grad()
-    pred3 = torch.nn.MSELoss()(pred, torch.zeros_like(pred))
-    pred3.backward()
-
-    print((time_grad+memory_grad), X.grad)
-
+    pred = my_model(torch.FloatTensor(X[20:30]))
     pred[:, 0], pred[:, 1] = pred[:, 0] * time_scale, pred[:, 1] / mem_scale
-    # print(torch.cat((torch.FloatTensor(X[20:30]), pred, torch.FloatTensor(Y[20:30])), dim=1))
+    print(torch.cat((torch.FloatTensor(X[20:30]), pred, torch.FloatTensor(Y[20:30])), dim=1))
 
 
 if __name__ == '__main__':
