@@ -17,8 +17,6 @@ Y = np.array(Y)
 idx = np.argsort(X)
 X = X[idx]
 Y = Y[idx]
-plt.figure()
-plt.plot(X/1e5, Y[:, 0]*100)
-# plt.figure()
-plt.plot(X/1e5, Y[:, 1]/5e5)
+plt.plot(X/1e6, Y[:, 1]/3e6)
+plt.plot(X/1e6, Y[:, 0]*24)
 plt.show()

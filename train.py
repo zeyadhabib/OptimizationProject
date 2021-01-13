@@ -23,11 +23,9 @@ class PerformanceMeasurementModel(torch.nn.Module, ABC):
 
 
 def train():
-    # size_scale = 1e5
-    # time_scale = 5e5
-    size_scale = 50e6
-    time_scale = 50e6
-    mem_scale = 100
+    size_scale = 1e6
+    time_scale = 3e6
+    mem_scale = 24
     validation_split = 0.1
 
     train_set = TextDataSet("dataset_final.txt")
@@ -48,6 +46,7 @@ def train():
 
     optimizer = torch.optim.Adam(our_model.parameters(), lr=0.01, weight_decay=0.001)
     criterion = torch.nn.MSELoss()
+    metric = torch.nn.L1Loss()
 
     avg_losses = []
     avg_losses_valid = []
@@ -81,14 +80,15 @@ def train():
                 total_loss_valid += loss_valid * target_valid.shape[0]
                 num_valid += target_valid.shape[0]
 
-                pred_y_metric[:, 0], pred_y_metric[:, 1] = pred_y_metric[:, 0] * (time_scale / 1e6), \
+                pred_y_metric[:, 0], pred_y_metric[:, 1] = pred_y_metric[:, 0] * time_scale, \
                                                            pred_y_metric[:, 1] / mem_scale
-                loss_metric = torch.nn.L1Loss()(pred_y_metric, target_valid_metric)
-                total_loss_metric += loss_metric * target_valid.shape[0]
+                loss_metric = metric(pred_y_metric, target_valid_metric)
+
+                total_loss_metric += loss_metric * target_valid_metric.shape[0]
 
         print('epoch {}, loss {}, validation loss {}, metric {}'.format(epoch, total_loss / num,
                                                                         total_loss_valid / num_valid,
-                                                                        loss_metric / num_valid))
+                                                                        total_loss_metric / num_valid))
         avg_losses.append(total_loss / num)
         avg_losses_valid.append(total_loss_valid / num_valid)
 
